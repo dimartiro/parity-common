@@ -19,7 +19,7 @@
 
 use crate::{Get, TryCollect};
 use alloc::collections::BTreeSet;
-use codec::{Compact, Decode, Encode, MaxEncodedLen};
+use codec::{Compact, Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use core::{borrow::Borrow, marker::PhantomData, ops::Deref};
 #[cfg(feature = "serde")]
 use serde::{
@@ -79,7 +79,7 @@ where
 
 					while let Some(value) = seq.next_element()? {
 						if values.len() >= max {
-							return Err(A::Error::custom("out of bounds"))
+							return Err(A::Error::custom("out of bounds"));
 						}
 						values.insert(value);
 					}
@@ -96,6 +96,13 @@ where
 	}
 }
 
+impl<T, S> DecodeWithMemTracking for BoundedBTreeSet<T, S>
+where
+	T: Decode + Ord,
+	S: Get<u32>,
+{
+}
+
 impl<T, S> Decode for BoundedBTreeSet<T, S>
 where
 	T: Decode + Ord,
@@ -106,7 +113,7 @@ where
 		// the len is too big.
 		let len: u32 = <Compact<u32>>::decode(input)?.into();
 		if len > S::get() {
-			return Err("BoundedBTreeSet exceeds its limit".into())
+			return Err("BoundedBTreeSet exceeds its limit".into());
 		}
 		input.descend_ref()?;
 		let inner = Result::from_iter((0..len).map(|_| Decode::decode(input)))?;
